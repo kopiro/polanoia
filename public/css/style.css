@@ -1,0 +1,297 @@
+body {
+  background-color: #f8f9fa;
+  padding: 20px;
+}
+
+#title {
+  font-weight: 900;
+}
+
+.form-label {
+  font-weight: 500;
+}
+
+#result {
+}
+
+#loading {
+  display: none;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+}
+
+.past-trips {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #dee2e6;
+}
+
+.trip-card {
+  margin-bottom: 15px;
+  transition: transform 0.2s;
+}
+
+.trip-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.trip-actions .btn {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+.trip-actions .btn i {
+  font-size: 0.8rem;
+  margin-right: 0.2rem;
+}
+
+.trip-actions .btn-primary {
+  background-color: #0056b3;
+  color: #ffffff;
+  border-color: #0056b3;
+}
+
+.trip-actions .btn-primary:hover {
+  background-color: #004494;
+  color: #ffffff;
+  border-color: #004494;
+}
+
+.trip-actions .btn-warning {
+  background-color: #ffeaa7;
+  color: #b78103;
+  border-color: #ffeaa7;
+}
+
+.trip-actions .btn-warning:hover {
+  background-color: #ffe082;
+  color: #996c02;
+  border-color: #ffe082;
+}
+
+.trip-actions .btn-info {
+  background-color: #d4f1f9;
+  color: #0c5460;
+  border-color: #d4f1f9;
+}
+
+.trip-actions .btn-info:hover {
+  background-color: #bee5eb;
+  color: #0a3a42;
+  border-color: #bee5eb;
+}
+
+.trip-actions .btn-info.edit-btn {
+  background-color: #b3e0ff;
+  color: #0066cc;
+  border-color: #b3e0ff;
+}
+
+.trip-actions .btn-info.edit-btn:hover {
+  background-color: #99d6ff;
+  color: #0052a3;
+  border-color: #99d6ff;
+}
+
+.trip-actions .btn-danger {
+  background-color: #ffb3b3;
+  color: #b30000;
+  border-color: #ffb3b3;
+}
+
+.trip-actions .btn-danger:hover {
+  background-color: #ff9999;
+  color: #800000;
+  border-color: #ff9999;
+}
+
+#itineraryForm button[type="submit"] {
+  background-color: #0056b3;
+  color: #ffffff;
+  border-color: #0056b3;
+}
+
+#itineraryForm button[type="submit"]:hover {
+  background-color: #004494;
+  color: #ffffff;
+  border-color: #004494;
+}
+
+#result .btn-primary {
+  background-color: #0056b3;
+  color: #ffffff;
+  border-color: #0056b3;
+}
+
+#result .btn-primary:hover {
+  background-color: #004494;
+  color: #ffffff;
+  border-color: #004494;
+}
+
+#result img {
+  margin-bottom: 10px;
+  max-width: 50%;
+}
+
+#result h2 {
+  margin-top: 1em;
+}
+
+/* Add button styling */
+.add-button-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.add-button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  background-color: #0056b3;
+  color: #ffffff;
+  border-color: #0056b3;
+}
+
+.add-button:hover {
+  background-color: #004494;
+  color: #ffffff;
+  border-color: #004494;
+}
+
+.add-button i {
+  font-size: 0.9rem;
+  margin-right: 0.2rem;
+}
+
+/* Custom extra small button size */
+.btn-xs {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  border-radius: 0.2rem;
+}
+
+/* Add styles for smaller buttons */
+.trip-actions .btn {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+.trip-actions .btn i {
+  font-size: 0.8rem;
+  margin-right: 0.2rem;
+}
+
+/* Make the Generate Itinerary button smaller too */
+.add-button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.add-button i {
+  font-size: 0.9rem;
+  margin-right: 0.2rem;
+}
+
+/* Styles for editable content */
+.trip-content {
+  border: 1px solid #dee2e6;
+  padding: 1rem;
+  border-radius: 0.25rem;
+  background-color: #fff;
+  min-height: 200px;
+}
+
+.trip-content:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Style for modified status */
+.status-modified {
+  color: #856404;
+  background-color: #fff3cd;
+  border-color: #ffeeba;
+}
+
+/* Add a warning icon for modified trips */
+.bi-exclamation-triangle-fill {
+  color: #ffc107;
+}
+
+.content-container {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  min-height: 200px;
+  background-color: #fff;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-family: -apple-system-ui-serif, serif;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.content-container[contenteditable="true"] {
+  border-color: #86b7fe;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1),
+    0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  background-color: #fff;
+  cursor: text;
+}
+
+.content-container:focus {
+  outline: none;
+}
+
+.status-modified {
+  background-color: #ffc107;
+  color: #000;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.alert.alert-info {
+  background-color: #e3f2fd;
+  border-color: #bee5eb;
+  color: #0c5460;
+}
+
+.alert.alert-info .btn {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.alert.alert-info .btn i {
+  margin-right: 0.3rem;
+}
+
+.alert.alert-info .btn-primary {
+  background-color: #0056b3;
+  border-color: #0056b3;
+  color: #fff;
+}
+
+.alert.alert-info .btn-primary:hover {
+  background-color: #004494;
+  border-color: #004494;
+}
+
+.alert.alert-info .btn-success {
+  background-color: #198754;
+  border-color: #198754;
+  color: #fff;
+}
+
+.alert.alert-info .btn-success:hover {
+  background-color: #157347;
+  border-color: #157347;
+}

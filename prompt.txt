@@ -1,0 +1,40 @@
+Create a realistic and doable trip itinerary; use the dates to change the plans accordingly.
+
+The output must be strictly very basic simple HTML, no styles, no ID/classes, no doctype or meta.
+All the links must have the property "target=_blank".
+
+Use a fun tone of voice.
+
+--
+
+Internal operations:
+- Google Maps links are built this way: https://www.google.com/maps/dir/A/B/C - where A,B,C, etc are the list of stops that must be done during that day (URL encoded).
+- The images must use the https://barabild.kopiro.me/search/query endpoint, where "query" represent the place we want to show.
+
+---
+
+At the beginning, add a recap of what you're doing.
+
+Describe the trip and each day and highlight the curiosities of each place.
+Add general recommendation and safety measures regarding the trip.
+
+Add Google Maps link that will have start place of the trip and end place of the trip, with all intermediate stops; since there is a 10 items limit, try to only add necessary stops for the whole travel (add detours if they add more than 1h to the whole trips).
+
+Then, split the itinerary in multiple days, and for each day:
+- include the date of the day and the number of the day relative to the start.
+- a Google maps link that outlines all the stops that must be done that day
+- a generic description of the day
+- a bullet point list of all the stops.
+- an image representing that day using <img/>
+
+---
+
+Itinerary description:
+
+Type: {trip_type}
+Start DateTime: {start_date}
+Start Place: {start_place}
+End DateTime: {end_date}
+End Place: {end_place}
+Focus: {trip_focus}
+Notes: {trip_notes}
