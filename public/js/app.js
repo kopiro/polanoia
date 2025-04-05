@@ -108,15 +108,8 @@ async function loadTrips() {
         );
         actionsContainer.appendChild(regenerateButton);
       } else if (trip.status === "Pending") {
-        // Check status button
-        const checkStatusButton = document.createElement("button");
-        checkStatusButton.className = "btn btn-xs btn-info me-2";
-        checkStatusButton.innerHTML =
-          '<i class="bi bi-arrow-repeat"></i> Check Status';
-        checkStatusButton.addEventListener("click", () =>
-          checkTripStatusWithPolling(trip.id)
-        );
-        actionsContainer.appendChild(checkStatusButton);
+        // Check status button removed
+        // No action needed for pending trips
       } else {
         // Regenerate button for failed trips
         const regenerateButton = document.createElement("button");
@@ -597,17 +590,8 @@ document
           const messageContainer = document.createElement("div");
           messageContainer.className = "alert alert-info";
           messageContainer.textContent =
-            "Your trip is being generated. You can check its status in the Past Trips section below.";
+            "Your trip is being generated. You can view its status in the Past Trips section below.";
           result.appendChild(messageContainer);
-
-          // Add a button to check the status
-          const checkStatusButton = document.createElement("button");
-          checkStatusButton.className = "btn btn-primary mt-3";
-          checkStatusButton.textContent = "Check Trip Status";
-          checkStatusButton.addEventListener("click", () =>
-            checkTripStatusWithPolling(resultData.trip_id)
-          );
-          result.appendChild(checkStatusButton);
 
           // Refresh the trips list to show the new trip
           await loadTrips();
