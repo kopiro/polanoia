@@ -21,7 +21,16 @@ function parseEuropeanDate(dateStr) {
   const [day, month, year] = datePart.split("/");
   const [hours, minutes] = timePart ? timePart.split(":") : ["00", "00"];
 
-  return new Date(year, month - 1, day, hours, minutes);
+  // Create a date object with the parsed values
+  // Note: month is 0-indexed in JavaScript Date constructor
+  const date = new Date(year, month - 1, day, hours, minutes);
+
+  // Validate the date is valid
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date format: ${dateStr}`);
+  }
+
+  return date;
 }
 
 // Helper function to convert ISO date string to European format
@@ -704,6 +713,16 @@ document.addEventListener("DOMContentLoaded", () => {
         time_24hr: true,
         locale: {
           firstDayOfWeek: 1, // Monday
+          formatDate: (date, format, locale) => {
+            // Ensure the date is formatted correctly for the backend
+            const day = String(date.getDate()).padStart(2, "0");
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, "0");
+            const minutes = String(date.getMinutes()).padStart(2, "0");
+
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+          },
         },
       });
     });
@@ -770,14 +789,22 @@ document
     delete data.trip_id;
 
     // Convert European date format to ISO format for the backend
-    if (data.start_date) {
-      const startDate = parseEuropeanDate(data.start_date);
-      data.start_date = startDate.toISOString();
-    }
+    try {
+      if (data.start_date) {
+        const startDate = parseEuropeanDate(data.start_date);
+        data.start_date = startDate.toISOString();
+      }
 
-    if (data.end_date) {
-      const endDate = parseEuropeanDate(data.end_date);
-      data.end_date = endDate.toISOString();
+      if (data.end_date) {
+        const endDate = parseEuropeanDate(data.end_date);
+        data.end_date = endDate.toISOString();
+      }
+    } catch (error) {
+      showAlert(
+        `Date format error: ${error.message}. Please use the date picker to select dates.`,
+        "danger"
+      );
+      return;
     }
 
     try {
