@@ -8,7 +8,7 @@ Use a fun tone of voice.
 --
 
 Internal operations:
-- Google Maps links are built this way: https://www.google.com/maps/dir/A/B/C - where A,B,C, etc are the list of stops that must be done during that day (URL encoded).
+- Google Maps links are built this way: https://www.google.com/maps/dir/A/B/C - where A,B,C, etc are the list of stops that must be done during that day (URL encoded). Always add the country in the addresses to prevent false positives.
 - The images must use the https://barabild.kopiro.me/search/query endpoint, where "query" represent the place we want to show.
 
 ---
