@@ -1,3 +1,35 @@
+// Helper function to format dates in European style (DD/MM/YYYY HH:MM)
+function formatDateEuropean(date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
+// Helper function to format dates for datetime-local input (YYYY-MM-DDThh:mm)
+function formatDateForInput(date) {
+  return date.toISOString().slice(0, 16);
+}
+
+// Helper function to convert European date string to Date object
+function parseEuropeanDate(dateStr) {
+  // Expected format: DD/MM/YYYY HH:MM
+  const [datePart, timePart] = dateStr.split(" ");
+  const [day, month, year] = datePart.split("/");
+  const [hours, minutes] = timePart ? timePart.split(":") : ["00", "00"];
+
+  return new Date(year, month - 1, day, hours, minutes);
+}
+
+// Helper function to convert ISO date string to European format
+function isoToEuropean(isoDateStr) {
+  const date = new Date(isoDateStr);
+  return formatDateEuropean(date);
+}
+
 // Function to load trips
 async function loadTrips() {
   try {
@@ -40,9 +72,9 @@ async function loadTrips() {
       const row = document.createElement("tr");
       row.setAttribute("data-trip-id", trip.id);
 
-      // Format dates
-      const startDate = new Date(trip.start_date).toLocaleString();
-      const endDate = new Date(trip.end_date).toLocaleString();
+      // Format dates using European style
+      const startDate = formatDateEuropean(new Date(trip.start_date));
+      const endDate = formatDateEuropean(new Date(trip.end_date));
 
       // Status - moved to the beginning and centered
       const statusCell = document.createElement("td");
@@ -201,24 +233,44 @@ async function viewTrip(tripId) {
     const tripNotesInput = document.getElementById("trip_notes");
     const identifierInput = document.getElementById("identifier");
 
-    // Format dates for the datetime-local inputs
+    // Format dates for the inputs
     const startDate = new Date(trip.start_date);
     const endDate = new Date(trip.end_date);
 
-    // Format dates as YYYY-MM-DDThh:mm for datetime-local input
-    const formatDateForInput = (date) => {
-      return date.toISOString().slice(0, 16);
-    };
-
     // Set the form values
     tripTypeSelect.value = trip.trip_type;
-    startDateInput.value = formatDateForInput(startDate);
-    endDateInput.value = formatDateForInput(endDate);
+    startDateInput.value = formatDateEuropean(startDate);
+    endDateInput.value = formatDateEuropean(endDate);
     startPlaceInput.value = trip.start_place;
     endPlaceInput.value = trip.end_place;
     tripFocusInput.value = trip.focus;
     tripNotesInput.value = trip.additional_requirements || "";
     identifierInput.value = trip.identifier;
+
+    // Update Flatpickr instances if they exist
+    if (startDateInput._flatpickr) {
+      startDateInput._flatpickr.setDate(startDate);
+    }
+
+    if (endDateInput._flatpickr) {
+      endDateInput._flatpickr.setDate(endDate);
+    }
+
+    // Update European format display
+    const startDateContainer = document.getElementById("start_date_european");
+    const endDateContainer = document.getElementById("end_date_european");
+
+    if (startDateContainer) {
+      startDateContainer.textContent = `European format: ${formatDateEuropean(
+        startDate
+      )}`;
+    }
+
+    if (endDateContainer) {
+      endDateContainer.textContent = `European format: ${formatDateEuropean(
+        endDate
+      )}`;
+    }
 
     // Add a hidden input for the trip ID
     let tripIdInput = document.getElementById("trip_id");
@@ -437,24 +489,44 @@ async function editTrip(tripId) {
     const tripNotesInput = document.getElementById("trip_notes");
     const identifierInput = document.getElementById("identifier");
 
-    // Format dates for the datetime-local inputs
+    // Format dates for the inputs
     const startDate = new Date(trip.start_date);
     const endDate = new Date(trip.end_date);
 
-    // Format dates as YYYY-MM-DDThh:mm for datetime-local input
-    const formatDateForInput = (date) => {
-      return date.toISOString().slice(0, 16);
-    };
-
     // Set the form values
     tripTypeSelect.value = trip.trip_type;
-    startDateInput.value = formatDateForInput(startDate);
-    endDateInput.value = formatDateForInput(endDate);
+    startDateInput.value = formatDateEuropean(startDate);
+    endDateInput.value = formatDateEuropean(endDate);
     startPlaceInput.value = trip.start_place;
     endPlaceInput.value = trip.end_place;
     tripFocusInput.value = trip.focus;
     tripNotesInput.value = trip.additional_requirements || "";
     identifierInput.value = trip.identifier;
+
+    // Update Flatpickr instances if they exist
+    if (startDateInput._flatpickr) {
+      startDateInput._flatpickr.setDate(startDate);
+    }
+
+    if (endDateInput._flatpickr) {
+      endDateInput._flatpickr.setDate(endDate);
+    }
+
+    // Update European format display
+    const startDateContainer = document.getElementById("start_date_european");
+    const endDateContainer = document.getElementById("end_date_european");
+
+    if (startDateContainer) {
+      startDateContainer.textContent = `European format: ${formatDateEuropean(
+        startDate
+      )}`;
+    }
+
+    if (endDateContainer) {
+      endDateContainer.textContent = `European format: ${formatDateEuropean(
+        endDate
+      )}`;
+    }
 
     // Add a hidden input for the trip ID
     let tripIdInput = document.getElementById("trip_id");
@@ -489,7 +561,64 @@ async function editTrip(tripId) {
 }
 
 // Load past trips when the page loads
-document.addEventListener("DOMContentLoaded", loadTrips);
+document.addEventListener("DOMContentLoaded", () => {
+  loadTrips();
+
+  // Initialize Flatpickr date pickers with European format
+  const datePickers = document.querySelectorAll(".datepicker");
+  if (datePickers.length > 0) {
+    datePickers.forEach((picker) => {
+      flatpickr(picker, {
+        enableTime: true,
+        dateFormat: "d/m/Y H:i",
+        time_24hr: true,
+        locale: {
+          firstDayOfWeek: 1, // Monday
+        },
+      });
+    });
+  }
+
+  // Add event listeners to date inputs to show European format
+  const startDateInput = document.getElementById("start_date");
+  const endDateInput = document.getElementById("end_date");
+
+  if (startDateInput && endDateInput) {
+    // Create containers for displaying European format dates
+    const startDateContainer = document.createElement("div");
+    startDateContainer.className = "form-text mt-1";
+    startDateContainer.id = "start_date_european";
+    startDateInput.parentNode.appendChild(startDateContainer);
+
+    const endDateContainer = document.createElement("div");
+    endDateContainer.className = "form-text mt-1";
+    endDateContainer.id = "end_date_european";
+    endDateInput.parentNode.appendChild(endDateContainer);
+
+    // Update European format display when date inputs change
+    startDateInput.addEventListener("change", () => {
+      if (startDateInput.value) {
+        const date = new Date(startDateInput.value);
+        startDateContainer.textContent = `European format: ${formatDateEuropean(
+          date
+        )}`;
+      } else {
+        startDateContainer.textContent = "";
+      }
+    });
+
+    endDateInput.addEventListener("change", () => {
+      if (endDateInput.value) {
+        const date = new Date(endDateInput.value);
+        endDateContainer.textContent = `European format: ${formatDateEuropean(
+          date
+        )}`;
+      } else {
+        endDateContainer.textContent = "";
+      }
+    });
+  }
+});
 
 // Update the form submission handler to handle both create and update
 document
@@ -509,6 +638,17 @@ document
 
     // Remove trip_id from the data to be sent
     delete data.trip_id;
+
+    // Convert European date format to ISO format for the backend
+    if (data.start_date) {
+      const startDate = parseEuropeanDate(data.start_date);
+      data.start_date = startDate.toISOString();
+    }
+
+    if (data.end_date) {
+      const endDate = parseEuropeanDate(data.end_date);
+      data.end_date = endDate.toISOString();
+    }
 
     try {
       let response;

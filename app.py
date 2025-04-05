@@ -62,9 +62,9 @@ def generate_prompt(itinerary_data):
 def generate_trip_content(trip):
     """Generate trip content using DeepSeek API."""
     try:
-        # Format dates for the prompt
-        start_date = trip.start_date.strftime('%B %d, %Y %H:%M')
-        end_date = trip.end_date.strftime('%B %d, %Y %H:%M')
+        # Format dates for the prompt in European style
+        start_date = trip.start_date.strftime('%d %B %Y %H:%M')
+        end_date = trip.end_date.strftime('%d %B %Y %H:%M')
         
         # Prepare data for prompt generation
         itinerary_data = {
@@ -136,7 +136,7 @@ def get_trips():
         'end_place': trip.end_place,
         'focus': trip.trip_focus,
         'additional_requirements': trip.trip_notes,
-        'created_at': trip.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'created_at': trip.created_at.strftime('%d/%m/%Y %H:%M:%S'),
         'status': trip.status
     } for trip in trips])
 
@@ -184,7 +184,7 @@ def get_trip(trip_id):
             'end_place': trip.end_place,
             'focus': trip.trip_focus,
             'additional_requirements': trip.trip_notes,
-            'created_at': trip.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'created_at': trip.created_at.strftime('%d/%m/%Y %H:%M:%S'),
             'status': trip.status,
             'html_content': trip.html_content
         })
