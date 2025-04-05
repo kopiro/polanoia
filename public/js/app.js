@@ -88,38 +88,21 @@ async function loadTrips() {
       actionsContainer.className = "trip-actions";
 
       // Add buttons based on status
-      if (trip.status === "Completed" || trip.status === "Modified") {
-        // View button (merged with edit functionality)
-        const viewButton = document.createElement("button");
-        viewButton.className = "btn btn-xs btn-primary me-2";
-        viewButton.innerHTML = '<i class="bi bi-eye"></i> View';
-        viewButton.addEventListener("click", () => viewTrip(trip.id));
-        actionsContainer.appendChild(viewButton);
+      // View button (merged with edit functionality)
+      const viewButton = document.createElement("button");
+      viewButton.className = "btn btn-xs btn-primary me-2";
+      viewButton.innerHTML = '<i class="bi bi-eye"></i> View';
+      viewButton.addEventListener("click", () => viewTrip(trip.id));
+      actionsContainer.appendChild(viewButton);
 
-        // Regenerate button
-        const regenerateButton = document.createElement("button");
-        regenerateButton.className =
-          "btn btn-xs btn-warning me-2 regenerate-btn";
-        regenerateButton.innerHTML =
-          '<i class="bi bi-arrow-clockwise"></i> Regenerate';
-        regenerateButton.setAttribute("data-trip-id", trip.id);
-        regenerateButton.addEventListener("click", () =>
-          regenerateTrip(trip.id)
-        );
-        actionsContainer.appendChild(regenerateButton);
-      } else {
-        // Regenerate button for failed trips
-        const regenerateButton = document.createElement("button");
-        regenerateButton.className =
-          "btn btn-xs btn-warning me-2 regenerate-btn";
-        regenerateButton.innerHTML =
-          '<i class="bi bi-arrow-clockwise"></i> Regenerate';
-        regenerateButton.setAttribute("data-trip-id", trip.id);
-        regenerateButton.addEventListener("click", () =>
-          regenerateTrip(trip.id)
-        );
-        actionsContainer.appendChild(regenerateButton);
-      }
+      // Regenerate button
+      const regenerateButton = document.createElement("button");
+      regenerateButton.className = "btn btn-xs btn-warning me-2 regenerate-btn";
+      regenerateButton.innerHTML =
+        '<i class="bi bi-arrow-clockwise"></i> Regenerate';
+      regenerateButton.setAttribute("data-trip-id", trip.id);
+      regenerateButton.addEventListener("click", () => regenerateTrip(trip.id));
+      actionsContainer.appendChild(regenerateButton);
 
       // Add delete button for all trips
       const deleteButton = document.createElement("button");
