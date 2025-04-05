@@ -77,6 +77,8 @@ def generate_trip_content(trip):
             'trip_focus': trip.trip_focus,
             'trip_notes': trip.trip_notes or 'None'
         }
+
+        print(f'Generating trip content for {trip.identifier}', itinerary_data)
         
         # Generate the prompt using the template
         prompt = generate_prompt(itinerary_data)
@@ -107,8 +109,9 @@ def generate_trip_content(trip):
         
         # Extract the generated content
         generated_content = data["choices"][0]["message"]["content"]
-
         generated_content = generated_content.replace('```html', '').replace('```', '')
+
+        print(f'Generated content for {trip.identifier}')
         
         # Return the generated content
         return generated_content, None
@@ -137,8 +140,8 @@ def get_trips():
         'status': trip.status
     } for trip in trips])
 
-@app.route('/generate', methods=['POST'])
-def generate_itinerary():
+@app.route('/trip', methods=['POST'])
+def create_trip():
     """Generate a new trip itinerary."""
     try:
         data = request.json
@@ -156,47 +159,38 @@ def generate_itinerary():
         db.session.add(trip)
         db.session.commit()
 
-        # Generate content using the abstracted function
-        generated_content, error = generate_trip_content(trip)
-        
-        if error:
-            trip.status = "Failed"
-            db.session.commit()
-            return jsonify({"error": error}), 500
-        
-        trip.html_content = generated_content
-        trip.status = "Completed"
         db.session.commit()
 
         return jsonify({"trip_id": trip.id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/trip/<int:trip_id>', methods=['GET'])
-def get_trip_html(trip_id):
+@app.route('/trips/<int:trip_id>', methods=['GET'])
+def get_trip(trip_id):
     """Get the HTML content for a specific trip."""
     try:
         trip = Trip.query.get(trip_id)
         if not trip:
             return jsonify({'error': 'Trip not found'}), 404
-            
-        if not trip.html_content:
-            return jsonify({
-                'status': 'Pending',
-                'message': 'Trip content is still being generated',
-                'trip_id': trip.id
-            })
-            
         return jsonify({
-            'html_content': trip.html_content,
-            'status': 'Completed',
-            'trip_id': trip.id
+            'id': trip.id,
+            'identifier': trip.identifier,
+            'trip_type': trip.trip_type,
+            'start_date': trip.start_date.strftime('%Y-%m-%dT%H:%M'),
+            'end_date': trip.end_date.strftime('%Y-%m-%dT%H:%M'),
+            'start_place': trip.start_place,
+            'end_place': trip.end_place,
+            'focus': trip.trip_focus,
+            'additional_requirements': trip.trip_notes,
+            'created_at': trip.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'status': trip.status,
+            'html_content': trip.html_content
         })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/trip/<int:trip_id>/generate', methods=['POST'])
+@app.route('/trips/<int:trip_id>/generate', methods=['POST'])
 def regenerate_trip(trip_id):
     """Regenerate a trip's content."""
     try:
@@ -218,7 +212,7 @@ def regenerate_trip(trip_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/trip/<int:trip_id>', methods=['DELETE'])
+@app.route('/trips/<int:trip_id>', methods=['DELETE'])
 def delete_trip(trip_id):
     """Delete a specific trip."""
     try:
@@ -238,7 +232,7 @@ def delete_trip(trip_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/trip/<int:trip_id>/content', methods=['PUT'])
+@app.route('/trips/<int:trip_id>/content', methods=['PUT'])
 def update_trip_content(trip_id):
     """Update a trip's HTML content and mark it as modified."""
     try:
@@ -267,7 +261,7 @@ def update_trip_content(trip_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/trip/<int:trip_id>', methods=['PUT'])
+@app.route('/trips/<int:trip_id>', methods=['PUT'])
 def update_trip(trip_id):
     """Update a specific trip's details."""
     try:

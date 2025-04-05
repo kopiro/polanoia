@@ -89,7 +89,7 @@ async function loadTrips() {
 
       // Add buttons based on status
       if (trip.status === "Completed" || trip.status === "Modified") {
-        // View button
+        // View button (merged with edit functionality)
         const viewButton = document.createElement("button");
         viewButton.className = "btn btn-xs btn-primary me-2";
         viewButton.innerHTML = '<i class="bi bi-eye"></i> View';
@@ -130,13 +130,6 @@ async function loadTrips() {
         );
         actionsContainer.appendChild(regenerateButton);
       }
-
-      // Add edit button for all trips
-      const editButton = document.createElement("button");
-      editButton.className = "btn btn-xs btn-info me-2 edit-btn";
-      editButton.innerHTML = '<i class="bi bi-pencil"></i> Edit';
-      editButton.addEventListener("click", () => editTrip(trip.id));
-      actionsContainer.appendChild(editButton);
 
       // Add delete button for all trips
       const deleteButton = document.createElement("button");
@@ -215,7 +208,56 @@ function createAlertContainer() {
 // Function to view a trip
 async function viewTrip(tripId) {
   try {
-    const response = await fetch(`/trip/${tripId}`);
+    // First, fetch the trip details to populate the form
+    const trip = await fetch(`/trips/${tripId}`);
+
+    // Populate the form with trip details
+    const form = document.getElementById("itineraryForm");
+    const tripTypeSelect = document.getElementById("trip_type");
+    const startDateInput = document.getElementById("start_date");
+    const endDateInput = document.getElementById("end_date");
+    const startPlaceInput = document.getElementById("start_place");
+    const endPlaceInput = document.getElementById("end_place");
+    const tripFocusInput = document.getElementById("trip_focus");
+    const tripNotesInput = document.getElementById("trip_notes");
+    const identifierInput = document.getElementById("identifier");
+
+    // Format dates for the datetime-local inputs
+    const startDate = new Date(trip.start_date);
+    const endDate = new Date(trip.end_date);
+
+    // Format dates as YYYY-MM-DDThh:mm for datetime-local input
+    const formatDateForInput = (date) => {
+      return date.toISOString().slice(0, 16);
+    };
+
+    // Set the form values
+    tripTypeSelect.value = trip.trip_type;
+    startDateInput.value = formatDateForInput(startDate);
+    endDateInput.value = formatDateForInput(endDate);
+    startPlaceInput.value = trip.start_place;
+    endPlaceInput.value = trip.end_place;
+    tripFocusInput.value = trip.focus;
+    tripNotesInput.value = trip.additional_requirements || "";
+    identifierInput.value = trip.identifier;
+
+    // Add a hidden input for the trip ID
+    let tripIdInput = document.getElementById("trip_id");
+    if (!tripIdInput) {
+      tripIdInput = document.createElement("input");
+      tripIdInput.type = "hidden";
+      tripIdInput.id = "trip_id";
+      tripIdInput.name = "trip_id";
+      form.appendChild(tripIdInput);
+    }
+    tripIdInput.value = tripId;
+
+    // Change the submit button text
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.textContent = "Update Trip";
+
+    // Now fetch the trip content
+    const response = await fetch(`/trips/${tripId}`);
     const data = await response.json();
 
     if (data.error) {
@@ -283,8 +325,14 @@ async function viewTrip(tripId) {
     // Add the content container
     resultElement.appendChild(contentContainer);
 
-    // Scroll to the result
-    resultElement.scrollIntoView({ behavior: "smooth" });
+    // Scroll to the form
+    form.scrollIntoView({ behavior: "smooth" });
+
+    // Show a message that we're in view/edit mode
+    showAlert(
+      "Viewing trip details. You can edit the form and content.",
+      "info"
+    );
   } catch (error) {
     console.error("Error viewing trip:", error);
     showAlert("Failed to load trip content. Please try again.", "danger");
@@ -294,7 +342,7 @@ async function viewTrip(tripId) {
 // Function to save edited trip content
 async function saveTripContent(tripId, htmlContent) {
   try {
-    const response = await fetch(`/trip/${tripId}/content`, {
+    const response = await fetch(`/trips/${tripId}/content`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -337,7 +385,7 @@ async function checkTripStatusWithPolling(tripId) {
     // Start polling
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/trip/${tripId}`);
+        const response = await fetch(`/trips/${tripId}`);
         const data = await response.json();
 
         if (data.error) {
@@ -500,7 +548,7 @@ document
 
       if (isUpdate) {
         // Update existing trip
-        response = await fetch(`/trip/${tripId}`, {
+        response = await fetch(`/trips/${tripId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -537,7 +585,7 @@ document
         }
       } else {
         // Create new trip
-        response = await fetch("/generate", {
+        response = await fetch("/trip", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -592,7 +640,7 @@ async function deleteTrip(tripId) {
   }
 
   try {
-    const response = await fetch(`/trip/${tripId}`, {
+    const response = await fetch(`/trips/${tripId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -643,7 +691,7 @@ async function regenerateTrip(tripId) {
     }
 
     // Use the new dedicated regenerate endpoint
-    const response = await fetch(`/trip/${tripId}/generate`, {
+    const response = await fetch(`/trips/${tripId}/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
