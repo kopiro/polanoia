@@ -209,7 +209,13 @@ function createAlertContainer() {
 async function viewTrip(tripId) {
   try {
     // First, fetch the trip details to populate the form
-    const trip = await fetch(`/trips/${tripId}`);
+    const response = await fetch(`/trips/${tripId}`);
+    const trip = await response.json();
+
+    if (trip.error) {
+      showAlert(trip.error, "danger");
+      return;
+    }
 
     // Populate the form with trip details
     const form = document.getElementById("itineraryForm");
@@ -256,15 +262,6 @@ async function viewTrip(tripId) {
     const submitButton = form.querySelector('button[type="submit"]');
     submitButton.textContent = "Update Trip";
 
-    // Now fetch the trip content
-    const response = await fetch(`/trips/${tripId}`);
-    const data = await response.json();
-
-    if (data.error) {
-      showAlert(data.error, "danger");
-      return;
-    }
-
     const resultElement = document.getElementById("result");
     resultElement.innerHTML = "";
 
@@ -295,7 +292,7 @@ async function viewTrip(tripId) {
     // Create a container for the content
     const contentContainer = document.createElement("div");
     contentContainer.className = "content-container";
-    contentContainer.innerHTML = data.html_content;
+    contentContainer.innerHTML = trip.html_content;
 
     // Add event listeners
     editButton.addEventListener("click", () => {
@@ -386,24 +383,24 @@ async function checkTripStatusWithPolling(tripId) {
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(`/trips/${tripId}`);
-        const data = await response.json();
+        const trip = await response.json();
 
-        if (data.error) {
+        if (trip.error) {
           clearInterval(pollInterval);
-          showAlert(data.error, "danger");
+          showAlert(trip.error, "danger");
           return;
         }
 
         // Update status in the table
         if (statusCell) {
           const statusIcon = document.createElement("i");
-          statusIcon.className = getStatusIconClass(data.status);
-          statusIcon.setAttribute("title", data.status || "Pending");
+          statusIcon.className = getStatusIconClass(trip.status);
+          statusIcon.setAttribute("title", trip.status || "Pending");
           statusCell.innerHTML = "";
           statusCell.appendChild(statusIcon);
         }
 
-        if (data.status === "Completed") {
+        if (trip.status === "Completed") {
           // Trip is ready, stop polling and show the content
           clearInterval(pollInterval);
 
@@ -416,7 +413,7 @@ async function checkTripStatusWithPolling(tripId) {
           // Create a container for the HTML content with full width
           const contentContainer = document.createElement("div");
           contentContainer.className = "trip-content w-100";
-          contentContainer.innerHTML = data.html_content;
+          contentContainer.innerHTML = trip.html_content;
 
           // Append the content to the result element
           resultElement.appendChild(contentContainer);
@@ -426,7 +423,7 @@ async function checkTripStatusWithPolling(tripId) {
 
           // Refresh the trips list to update the status
           await loadTrips();
-        } else if (data.status === "Failed") {
+        } else if (trip.status === "Failed") {
           // Trip generation failed, stop polling
           clearInterval(pollInterval);
           showAlert("Trip generation failed. Please try again.", "danger");
@@ -448,14 +445,11 @@ async function checkTripStatusWithPolling(tripId) {
 async function editTrip(tripId) {
   try {
     // Fetch the trip details from the trips endpoint
-    const response = await fetch("/trips");
-    const trips = await response.json();
+    const response = await fetch(`/trips/${tripId}`);
+    const trip = await response.json();
 
-    // Find the specific trip by ID
-    const trip = trips.find((t) => t.id === tripId);
-
-    if (!trip) {
-      showAlert("Trip not found", "danger");
+    if (trip.error) {
+      showAlert(trip.error, "danger");
       return;
     }
 
@@ -727,7 +721,7 @@ async function regenerateTrip(tripId) {
       // Create a container for the HTML content with full width
       const contentContainer = document.createElement("div");
       contentContainer.className = "trip-content w-100";
-      contentContainer.innerHTML = data.html_content;
+      contentContainer.innerHTML = trip.html_content;
 
       // Append the content to the result element
       resultElement.appendChild(contentContainer);
