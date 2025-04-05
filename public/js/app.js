@@ -107,9 +107,6 @@ async function loadTrips() {
           regenerateTrip(trip.id)
         );
         actionsContainer.appendChild(regenerateButton);
-      } else if (trip.status === "Pending") {
-        // Check status button removed
-        // No action needed for pending trips
       } else {
         // Regenerate button for failed trips
         const regenerateButton = document.createElement("button");
