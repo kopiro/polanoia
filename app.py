@@ -140,7 +140,7 @@ def get_trips():
         'status': trip.status
     } for trip in trips])
 
-@app.route('/trip', methods=['POST'])
+@app.route('/trips', methods=['POST'])
 def create_trip():
     """Generate a new trip itinerary."""
     try:
@@ -157,7 +157,9 @@ def create_trip():
             status="Pending"
         )
         db.session.add(trip)
-        db.session.commit()
+
+        # Asynchronously generate the trip content
+        threading.Thread(target=generate_trip_content, args=(trip,)).start()
 
         db.session.commit()
 

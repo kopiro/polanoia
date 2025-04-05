@@ -572,7 +572,7 @@ document
         }
       } else {
         // Create new trip
-        response = await fetch("/trip", {
+        response = await fetch("/trips", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
