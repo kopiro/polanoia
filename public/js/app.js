@@ -401,8 +401,79 @@ async function checkTripStatusWithPolling(tripId) {
         <i class="bi bi-hourglass-split text-warning">
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
         </i>
+        <span class="polling-time ms-1">(0s)</span>
       `;
     }
+
+    // Get the actions cell to add a manual check button
+    const actionsCell = document.querySelector(
+      `tr[data-trip-id="${tripId}"] td:last-child`
+    );
+
+    // Create a manual check button
+    let manualCheckButton = null;
+    if (actionsCell) {
+      manualCheckButton = document.createElement("button");
+      manualCheckButton.className = "btn btn-xs btn-info me-2 manual-check-btn";
+      manualCheckButton.innerHTML =
+        '<i class="bi bi-arrow-repeat"></i> Check Status';
+      manualCheckButton.addEventListener("click", () => {
+        // Clear any existing interval
+        if (window.pollingIntervals && window.pollingIntervals[tripId]) {
+          clearInterval(window.pollingIntervals[tripId]);
+        }
+        // Start a new polling session
+        checkTripStatusWithPolling(tripId);
+      });
+
+      // Add the button to the actions cell
+      const actionsContainer = actionsCell.querySelector(".trip-actions");
+      if (actionsContainer) {
+        // Remove any existing manual check button
+        const existingButton =
+          actionsContainer.querySelector(".manual-check-btn");
+        if (existingButton) {
+          existingButton.remove();
+        }
+        // Add the new button at the beginning
+        actionsContainer.insertBefore(
+          manualCheckButton,
+          actionsContainer.firstChild
+        );
+      }
+    }
+
+    // Initialize polling intervals if it doesn't exist
+    if (!window.pollingIntervals) {
+      window.pollingIntervals = {};
+    }
+
+    // Initialize polling times if it doesn't exist
+    if (!window.pollingTimes) {
+      window.pollingTimes = {};
+    }
+
+    // Set the start time for this polling session
+    window.pollingTimes[tripId] = Date.now();
+
+    // Update the polling time display every second
+    const timeUpdateInterval = setInterval(() => {
+      const elapsedSeconds = Math.floor(
+        (Date.now() - window.pollingTimes[tripId]) / 1000
+      );
+      const pollingTimeElement = document.querySelector(
+        `tr[data-trip-id="${tripId}"] .polling-time`
+      );
+      if (pollingTimeElement) {
+        pollingTimeElement.textContent = `(${elapsedSeconds}s)`;
+      }
+    }, 1000);
+
+    // Store the time update interval
+    if (!window.timeUpdateIntervals) {
+      window.timeUpdateIntervals = {};
+    }
+    window.timeUpdateIntervals[tripId] = timeUpdateInterval;
 
     // Start polling
     const pollInterval = setInterval(async () => {
@@ -412,6 +483,7 @@ async function checkTripStatusWithPolling(tripId) {
 
         if (trip.error) {
           clearInterval(pollInterval);
+          clearInterval(timeUpdateInterval);
           showAlert(trip.error, "danger");
           return;
         }
@@ -423,11 +495,28 @@ async function checkTripStatusWithPolling(tripId) {
           statusIcon.setAttribute("title", trip.status || "Pending");
           statusCell.innerHTML = "";
           statusCell.appendChild(statusIcon);
+
+          // Add the polling time if still polling
+          if (trip.status === "Pending") {
+            const elapsedSeconds = Math.floor(
+              (Date.now() - window.pollingTimes[tripId]) / 1000
+            );
+            const pollingTimeSpan = document.createElement("span");
+            pollingTimeSpan.className = "polling-time ms-1";
+            pollingTimeSpan.textContent = `(${elapsedSeconds}s)`;
+            statusCell.appendChild(pollingTimeSpan);
+          }
         }
 
         if (trip.status === "Completed") {
           // Trip is ready, stop polling and show the content
           clearInterval(pollInterval);
+          clearInterval(timeUpdateInterval);
+
+          // Remove the manual check button
+          if (manualCheckButton && manualCheckButton.parentNode) {
+            manualCheckButton.parentNode.removeChild(manualCheckButton);
+          }
 
           // Display the HTML content directly in the result element
           const resultElement = document.getElementById("result");
@@ -451,15 +540,56 @@ async function checkTripStatusWithPolling(tripId) {
         } else if (trip.status === "Failed") {
           // Trip generation failed, stop polling
           clearInterval(pollInterval);
+          clearInterval(timeUpdateInterval);
+
+          // Remove the manual check button
+          if (manualCheckButton && manualCheckButton.parentNode) {
+            manualCheckButton.parentNode.removeChild(manualCheckButton);
+          }
+
           showAlert("Trip generation failed. Please try again.", "danger");
           await loadTrips(); // Refresh the trips list
         }
       } catch (error) {
         console.error("Error checking trip status:", error);
         clearInterval(pollInterval);
+        clearInterval(timeUpdateInterval);
         showAlert("Failed to check trip status. Please try again.", "danger");
       }
     }, 4000); // Poll every 4 seconds
+
+    // Store the interval ID
+    window.pollingIntervals[tripId] = pollInterval;
+
+    // Set a timeout to stop polling after 5 minutes
+    setTimeout(() => {
+      // Check if the polling is still active
+      if (window.pollingIntervals && window.pollingIntervals[tripId]) {
+        clearInterval(window.pollingIntervals[tripId]);
+        clearInterval(window.timeUpdateIntervals[tripId]);
+
+        // Update the status cell to show that polling has timed out
+        if (statusCell) {
+          const statusIcon = document.createElement("i");
+          statusIcon.className = getStatusIconClass("Pending");
+          statusIcon.setAttribute("title", "Pending - Check manually");
+          statusCell.innerHTML = "";
+          statusCell.appendChild(statusIcon);
+
+          // Add a timeout indicator
+          const timeoutSpan = document.createElement("span");
+          timeoutSpan.className = "text-warning ms-1";
+          timeoutSpan.textContent = "(Check manually)";
+          statusCell.appendChild(timeoutSpan);
+        }
+
+        // Show an alert to the user
+        showAlert(
+          "Status checking timed out. Please check the status manually.",
+          "warning"
+        );
+      }
+    }, 5 * 60 * 1000); // 5 minutes
   } catch (error) {
     console.error("Error setting up polling:", error);
     showAlert("Failed to set up status checking. Please try again.", "danger");
