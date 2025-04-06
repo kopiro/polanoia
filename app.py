@@ -59,12 +59,14 @@ def generate_prompt(itinerary_data):
     
     return prompt
 
-def generate_trip_content(trip):
+def generate_trip_content(trip_id):
     """Generate trip content using DeepSeek API."""
     try:
-        # Format dates for the prompt in European style
-        start_date = trip.start_date.strftime('%d %B %Y %H:%M')
-        end_date = trip.end_date.strftime('%d %B %Y %H:%M')
+        trip = Trip.query.get(trip_id)
+
+        # Format dates for the prompt in style
+        start_date = trip.start_date.strftime('%d/%m/%Y %H:%M')
+        end_date = trip.end_date.strftime('%d/%m/%Y %H:%M')
         
         # Prepare data for prompt generation
         itinerary_data = {
@@ -93,8 +95,8 @@ def generate_trip_content(trip):
             json={
                 'model': 'deepseek-chat',
                 'messages': [{'role': 'user', 'content': prompt}],
-                'temperature': 0.7,
-                'max_tokens': 4000
+                'temperature': 0.5,
+                'max_tokens': 8000
             }
         )
         
@@ -112,11 +114,16 @@ def generate_trip_content(trip):
         generated_content = generated_content.replace('```html', '').replace('```', '')
 
         print(f'Generated content for {trip.identifier}')
+
+        trip.html_content = generated_content
+        trip.status = "Completed"
+        db.session.commit()
         
         # Return the generated content
         return generated_content, None
         
     except Exception as e:
+        print(f"Error generating content: {str(e)}")
         return None, f"Error generating content: {str(e)}"
 
 @app.route('/')
@@ -157,11 +164,12 @@ def create_trip():
             status="Pending"
         )
         db.session.add(trip)
-
-        # Asynchronously generate the trip content
-        threading.Thread(target=generate_trip_content, args=(trip,)).start()
-
         db.session.commit()
+
+        trip_id = trip.id
+
+         # Asynchronously generate the trip content
+        threading.Thread(target=generate_trip_content, args=(trip_id,)).start()
 
         return jsonify({"trip_id": trip.id}), 200
     except Exception as e:
@@ -199,18 +207,8 @@ def regenerate_trip(trip_id):
         trip = Trip.query.get_or_404(trip_id)
         
         # Generate content using the abstracted function
-        generated_content, error = generate_trip_content(trip)
-        
-        if error:
-            trip.status = "Failed"
-            db.session.commit()
-            return jsonify({"error": error}), 500
-        
-        trip.html_content = generated_content
-        trip.status = "Completed"
-        db.session.commit()
-
-        return jsonify({"status": "Completed", "html_content": trip.html_content}), 200
+        threading.Thread(target=generate_trip_content, args=(trip_id,)).start()
+        return jsonify({"status": "Pending"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

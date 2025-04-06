@@ -1,5 +1,5 @@
-// Helper function to format dates in European style (DD/MM/YYYY HH:MM)
-function formatDateEuropean(date) {
+// Helper function to format dates in style (DD/MM/YYYY HH:MM)
+function formatDate(date) {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = date.getFullYear();
@@ -14,8 +14,8 @@ function formatDateForInput(date) {
   return date.toISOString().slice(0, 16);
 }
 
-// Helper function to convert European date string to Date object
-function parseEuropeanDate(dateStr) {
+// Helper function to convert date string to Date object
+function parseDate(dateStr) {
   // Expected format: DD/MM/YYYY HH:MM
   const [datePart, timePart] = dateStr.split(" ");
   const [day, month, year] = datePart.split("/");
@@ -31,12 +31,6 @@ function parseEuropeanDate(dateStr) {
   }
 
   return date;
-}
-
-// Helper function to convert ISO date string to European format
-function isoToEuropean(isoDateStr) {
-  const date = new Date(isoDateStr);
-  return formatDateEuropean(date);
 }
 
 // Function to load trips
@@ -81,9 +75,9 @@ async function loadTrips() {
       const row = document.createElement("tr");
       row.setAttribute("data-trip-id", trip.id);
 
-      // Format dates using European style
-      const startDate = formatDateEuropean(new Date(trip.start_date));
-      const endDate = formatDateEuropean(new Date(trip.end_date));
+      // Format dates using style
+      const startDate = formatDate(new Date(trip.start_date));
+      const endDate = formatDate(new Date(trip.end_date));
 
       // Status - moved to the beginning and centered
       const statusCell = document.createElement("td");
@@ -248,8 +242,8 @@ async function viewTrip(tripId) {
 
     // Set the form values
     tripTypeSelect.value = trip.trip_type;
-    startDateInput.value = formatDateEuropean(startDate);
-    endDateInput.value = formatDateEuropean(endDate);
+    startDateInput.value = formatDate(startDate);
+    endDateInput.value = formatDate(endDate);
     startPlaceInput.value = trip.start_place;
     endPlaceInput.value = trip.end_place;
     tripFocusInput.value = trip.focus;
@@ -265,20 +259,16 @@ async function viewTrip(tripId) {
       endDateInput._flatpickr.setDate(endDate);
     }
 
-    // Update European format display
-    const startDateContainer = document.getElementById("start_date_european");
-    const endDateContainer = document.getElementById("end_date_european");
+    // Update format display
+    const startDateContainer = document.getElementById("start_date");
+    const endDateContainer = document.getElementById("end_date");
 
     if (startDateContainer) {
-      startDateContainer.textContent = `European format: ${formatDateEuropean(
-        startDate
-      )}`;
+      startDateContainer.textContent = fformatDate(startDate);
     }
 
     if (endDateContainer) {
-      endDateContainer.textContent = `European format: ${formatDateEuropean(
-        endDate
-      )}`;
+      endDateContainer.textContent = formatDate(endDate);
     }
 
     // Add a hidden input for the trip ID
@@ -414,44 +404,6 @@ async function checkTripStatusWithPolling(tripId) {
       `;
     }
 
-    // Get the actions cell to add a manual check button
-    const actionsCell = document.querySelector(
-      `tr[data-trip-id="${tripId}"] td:last-child`
-    );
-
-    // Create a manual check button
-    let manualCheckButton = null;
-    if (actionsCell) {
-      manualCheckButton = document.createElement("button");
-      manualCheckButton.className = "btn btn-xs btn-info me-2 manual-check-btn";
-      manualCheckButton.innerHTML =
-        '<i class="bi bi-arrow-repeat"></i> Check Status';
-      manualCheckButton.addEventListener("click", () => {
-        // Clear any existing interval
-        if (window.pollingIntervals && window.pollingIntervals[tripId]) {
-          clearInterval(window.pollingIntervals[tripId]);
-        }
-        // Start a new polling session
-        checkTripStatusWithPolling(tripId);
-      });
-
-      // Add the button to the actions cell
-      const actionsContainer = actionsCell.querySelector(".trip-actions");
-      if (actionsContainer) {
-        // Remove any existing manual check button
-        const existingButton =
-          actionsContainer.querySelector(".manual-check-btn");
-        if (existingButton) {
-          existingButton.remove();
-        }
-        // Add the new button at the beginning
-        actionsContainer.insertBefore(
-          manualCheckButton,
-          actionsContainer.firstChild
-        );
-      }
-    }
-
     // Initialize polling intervals if it doesn't exist
     if (!window.pollingIntervals) {
       window.pollingIntervals = {};
@@ -477,12 +429,6 @@ async function checkTripStatusWithPolling(tripId) {
         pollingTimeElement.textContent = `(${elapsedSeconds}s)`;
       }
     }, 1000);
-
-    // Store the time update interval
-    if (!window.timeUpdateIntervals) {
-      window.timeUpdateIntervals = {};
-    }
-    window.timeUpdateIntervals[tripId] = timeUpdateInterval;
 
     // Start polling
     const pollInterval = setInterval(async () => {
@@ -522,11 +468,6 @@ async function checkTripStatusWithPolling(tripId) {
           clearInterval(pollInterval);
           clearInterval(timeUpdateInterval);
 
-          // Remove the manual check button
-          if (manualCheckButton && manualCheckButton.parentNode) {
-            manualCheckButton.parentNode.removeChild(manualCheckButton);
-          }
-
           // Display the HTML content directly in the result element
           const resultElement = document.getElementById("result");
 
@@ -551,11 +492,6 @@ async function checkTripStatusWithPolling(tripId) {
           clearInterval(pollInterval);
           clearInterval(timeUpdateInterval);
 
-          // Remove the manual check button
-          if (manualCheckButton && manualCheckButton.parentNode) {
-            manualCheckButton.parentNode.removeChild(manualCheckButton);
-          }
-
           showAlert("Trip generation failed. Please try again.", "danger");
           await loadTrips(); // Refresh the trips list
         }
@@ -565,40 +501,10 @@ async function checkTripStatusWithPolling(tripId) {
         clearInterval(timeUpdateInterval);
         showAlert("Failed to check trip status. Please try again.", "danger");
       }
-    }, 4000); // Poll every 4 seconds
+    }, 1000); // Poll every 1 seconds
 
     // Store the interval ID
     window.pollingIntervals[tripId] = pollInterval;
-
-    // Set a timeout to stop polling after 5 minutes
-    setTimeout(() => {
-      // Check if the polling is still active
-      if (window.pollingIntervals && window.pollingIntervals[tripId]) {
-        clearInterval(window.pollingIntervals[tripId]);
-        clearInterval(window.timeUpdateIntervals[tripId]);
-
-        // Update the status cell to show that polling has timed out
-        if (statusCell) {
-          const statusIcon = document.createElement("i");
-          statusIcon.className = getStatusIconClass("Pending");
-          statusIcon.setAttribute("title", "Pending - Check manually");
-          statusCell.innerHTML = "";
-          statusCell.appendChild(statusIcon);
-
-          // Add a timeout indicator
-          const timeoutSpan = document.createElement("span");
-          timeoutSpan.className = "text-warning ms-1";
-          timeoutSpan.textContent = "(Check manually)";
-          statusCell.appendChild(timeoutSpan);
-        }
-
-        // Show an alert to the user
-        showAlert(
-          "Status checking timed out. Please check the status manually.",
-          "warning"
-        );
-      }
-    }, 5 * 60 * 1000); // 5 minutes
   } catch (error) {
     console.error("Error setting up polling:", error);
     showAlert("Failed to set up status checking. Please try again.", "danger");
@@ -634,8 +540,8 @@ async function editTrip(tripId) {
 
     // Set the form values
     tripTypeSelect.value = trip.trip_type;
-    startDateInput.value = formatDateEuropean(startDate);
-    endDateInput.value = formatDateEuropean(endDate);
+    startDateInput.value = formatDate(startDate);
+    endDateInput.value = formatDate(endDate);
     startPlaceInput.value = trip.start_place;
     endPlaceInput.value = trip.end_place;
     tripFocusInput.value = trip.focus;
@@ -651,20 +557,16 @@ async function editTrip(tripId) {
       endDateInput._flatpickr.setDate(endDate);
     }
 
-    // Update European format display
-    const startDateContainer = document.getElementById("start_date_european");
-    const endDateContainer = document.getElementById("end_date_european");
+    // Update format display
+    const startDateContainer = document.getElementById("start_date");
+    const endDateContainer = document.getElementById("end_date");
 
     if (startDateContainer) {
-      startDateContainer.textContent = `European format: ${formatDateEuropean(
-        startDate
-      )}`;
+      startDateContainer.textContent = formatDate(startDate);
     }
 
     if (endDateContainer) {
-      endDateContainer.textContent = `European format: ${formatDateEuropean(
-        endDate
-      )}`;
+      endDateContainer.textContent = formatDate(endDate);
     }
 
     // Add a hidden input for the trip ID
@@ -703,7 +605,7 @@ async function editTrip(tripId) {
 document.addEventListener("DOMContentLoaded", () => {
   loadTrips();
 
-  // Initialize Flatpickr date pickers with European format
+  // Initialize Flatpickr date pickers with format
   const datePickers = document.querySelectorAll(".datepicker");
   if (datePickers.length > 0) {
     datePickers.forEach((picker) => {
@@ -728,29 +630,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Add event listeners to date inputs to show European format
+  // Add event listeners to date inputs to show format
   const startDateInput = document.getElementById("start_date");
   const endDateInput = document.getElementById("end_date");
 
   if (startDateInput && endDateInput) {
-    // Create containers for displaying European format dates
+    // Create containers for displaying format dates
     const startDateContainer = document.createElement("div");
     startDateContainer.className = "form-text mt-1";
-    startDateContainer.id = "start_date_european";
+    startDateContainer.id = "start_date";
     startDateInput.parentNode.appendChild(startDateContainer);
 
     const endDateContainer = document.createElement("div");
     endDateContainer.className = "form-text mt-1";
-    endDateContainer.id = "end_date_european";
+    endDateContainer.id = "end_date";
     endDateInput.parentNode.appendChild(endDateContainer);
 
-    // Update European format display when date inputs change
+    // Update format display when date inputs change
     startDateInput.addEventListener("change", () => {
       if (startDateInput.value) {
         const date = new Date(startDateInput.value);
-        startDateContainer.textContent = `European format: ${formatDateEuropean(
-          date
-        )}`;
+        startDateContainer.textContent = formatDate(date);
       } else {
         startDateContainer.textContent = "";
       }
@@ -759,9 +659,7 @@ document.addEventListener("DOMContentLoaded", () => {
     endDateInput.addEventListener("change", () => {
       if (endDateInput.value) {
         const date = new Date(endDateInput.value);
-        endDateContainer.textContent = `European format: ${formatDateEuropean(
-          date
-        )}`;
+        endDateContainer.textContent = formatDate(date);
       } else {
         endDateContainer.textContent = "";
       }
@@ -788,15 +686,15 @@ document
     // Remove trip_id from the data to be sent
     delete data.trip_id;
 
-    // Convert European date format to ISO format for the backend
+    // Convert date format to ISO format for the backend
     try {
       if (data.start_date) {
-        const startDate = parseEuropeanDate(data.start_date);
+        const startDate = parseDate(data.start_date);
         data.start_date = startDate.toISOString();
       }
 
       if (data.end_date) {
-        const endDate = parseEuropeanDate(data.end_date);
+        const endDate = parseDate(data.end_date);
         data.end_date = endDate.toISOString();
       }
     } catch (error) {
@@ -968,31 +866,8 @@ async function regenerateTrip(tripId) {
       return;
     }
 
-    if (data.status === "Pending") {
-      showAlert("Trip is being regenerated. Please check back later.", "info");
-      // Start polling for status updates
-      checkTripStatusWithPolling(tripId);
-    } else {
-      // Display the regenerated content directly in the result element
-      const resultElement = document.getElementById("result");
-
-      // Clear previous content
-      resultElement.innerHTML = "";
-
-      // Create a container for the HTML content with full width
-      const contentContainer = document.createElement("div");
-      contentContainer.className = "trip-content w-100";
-      contentContainer.innerHTML = trip.html_content;
-
-      // Append the content to the result element
-      resultElement.appendChild(contentContainer);
-
-      // Scroll to the result element
-      resultElement.scrollIntoView({ behavior: "smooth" });
-
-      // Refresh the trips list
-      await loadTrips();
-    }
+    showAlert("Trip is being regenerated. Please check back later.", "info");
+    checkTripStatusWithPolling(tripId);
   } catch (error) {
     // Restore the button state in case of error
     const regenerateButton = document.querySelector(
