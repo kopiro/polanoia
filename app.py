@@ -59,71 +59,74 @@ def generate_prompt(itinerary_data):
     
     return prompt
 
-def generate_trip_content(trip_id):
+def async_generate_trip_content(trip_id):
     """Generate trip content using DeepSeek API."""
     try:
-        trip = Trip.query.get(trip_id)
+        # Create a new application context for this thread
+        with app.app_context():
+            trip = Trip.query.get(trip_id)
 
-        # Format dates for the prompt in style
-        start_date = trip.start_date.strftime('%d/%m/%Y %H:%M')
-        end_date = trip.end_date.strftime('%d/%m/%Y %H:%M')
-        
-        # Prepare data for prompt generation
-        itinerary_data = {
-            'identifier': trip.identifier,
-            'trip_type': trip.trip_type,
-            'start_date': start_date,
-            'end_date': end_date,
-            'start_place': trip.start_place,
-            'end_place': trip.end_place,
-            'trip_focus': trip.trip_focus,
-            'trip_notes': trip.trip_notes or 'None'
-        }
-
-        print(f'Generating trip content for {trip.identifier}', itinerary_data)
-        
-        # Generate the prompt using the template
-        prompt = generate_prompt(itinerary_data)
-        
-        # Make the API request to DeepSeek
-        response = requests.post(
-            'https://api.deepseek.com/v1/chat/completions',
-            headers={
-                'Authorization': f'Bearer {os.getenv("DEEPSEEK_API_KEY")}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'model': 'deepseek-chat',
-                'messages': [{'role': 'user', 'content': prompt}],
-                'temperature': 0.5,
-                'max_tokens': 8000
+            # Format dates for the prompt in style
+            start_date = trip.start_date.strftime('%d/%m/%Y %H:%M')
+            end_date = trip.end_date.strftime('%d/%m/%Y %H:%M')
+            
+            # Prepare data for prompt generation
+            itinerary_data = {
+                'identifier': trip.identifier,
+                'trip_type': trip.trip_type,
+                'start_date': start_date,
+                'end_date': end_date,
+                'start_place': trip.start_place,
+                'end_place': trip.end_place,
+                'trip_focus': trip.trip_focus,
+                'trip_notes': trip.trip_notes or 'None'
             }
-        )
-        
-        # Check if the request was successful
-        if response.status_code != 200:
-            return None, f"API request failed with status code {response.status_code}"
-        
-        # Parse the response
-        data = response.json()
-        if "choices" not in data or not data["choices"]:
-            return None, "No content generated from the API"
-        
-        # Extract the generated content
-        generated_content = data["choices"][0]["message"]["content"]
-        generated_content = generated_content.replace('```html', '').replace('```', '')
 
-        print(f'Generated content for {trip.identifier}')
+            print(f'Generating trip content for {trip.identifier}', itinerary_data)
+            
+            # Generate the prompt using the template
+            prompt = generate_prompt(itinerary_data)
+            
+            # Make the API request to DeepSeek
+            response = requests.post(
+                'https://api.deepseek.com/v1/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {os.getenv("DEEPSEEK_API_KEY")}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    'model': 'deepseek-chat',
+                    'messages': [{'role': 'user', 'content': prompt}],
+                    'temperature': 0.5,
+                    'max_tokens': 8000
+                }
+            )
+            
+            # Check if the request was successful
+            if response.status_code != 200:
+                return None, f"API request failed with status code {response.status_code}"
+            
+            # Parse the response
+            data = response.json()
+            if "choices" not in data or not data["choices"]:
+                return None, "No content generated from the API"
+            
+            # Extract the generated content
+            generated_content = data["choices"][0]["message"]["content"]
+            generated_content = generated_content.replace('```html', '').replace('```', '')
 
-        trip.html_content = generated_content
-        trip.status = "Completed"
-        db.session.commit()
-        
-        # Return the generated content
-        return generated_content, None
+            print(f'Generated content for "{trip.identifier}" successfully')
+
+            trip.html_content = generated_content
+            trip.status = "Completed"
+
+            db.session.commit()
+            
+            # Return the generated content
+            return generated_content, None
         
     except Exception as e:
-        print(f"Error generating content: {str(e)}")
+        print(f"Error generating content for {trip.identifier}: {str(e)}")
         return None, f"Error generating content: {str(e)}"
 
 @app.route('/')
@@ -141,8 +144,6 @@ def get_trips():
         'end_date': trip.end_date.strftime('%Y-%m-%dT%H:%M'),
         'start_place': trip.start_place,
         'end_place': trip.end_place,
-        'focus': trip.trip_focus,
-        'additional_requirements': trip.trip_notes,
         'created_at': trip.created_at.strftime('%d/%m/%Y %H:%M:%S'),
         'status': trip.status
     } for trip in trips])
@@ -169,7 +170,7 @@ def create_trip():
         trip_id = trip.id
 
          # Asynchronously generate the trip content
-        threading.Thread(target=generate_trip_content, args=(trip_id,)).start()
+        threading.Thread(target=async_generate_trip_content, args=(trip_id,)).start()
 
         return jsonify({"trip_id": trip.id}), 200
     except Exception as e:
@@ -177,7 +178,6 @@ def create_trip():
 
 @app.route('/trips/<int:trip_id>', methods=['GET'])
 def get_trip(trip_id):
-    """Get the HTML content for a specific trip."""
     try:
         trip = Trip.query.get(trip_id)
         if not trip:
@@ -190,8 +190,8 @@ def get_trip(trip_id):
             'end_date': trip.end_date.strftime('%Y-%m-%dT%H:%M'),
             'start_place': trip.start_place,
             'end_place': trip.end_place,
-            'focus': trip.trip_focus,
-            'additional_requirements': trip.trip_notes,
+            'trip_focus': trip.trip_focus,
+            'trip_notes': trip.trip_notes,
             'created_at': trip.created_at.strftime('%d/%m/%Y %H:%M:%S'),
             'status': trip.status,
             'html_content': trip.html_content
@@ -205,10 +205,15 @@ def regenerate_trip(trip_id):
     """Regenerate a trip's content."""
     try:
         trip = Trip.query.get_or_404(trip_id)
+        trip.status = "Pending"
+        db.session.commit()
         
-        # Generate content using the abstracted function
-        threading.Thread(target=generate_trip_content, args=(trip_id,)).start()
-        return jsonify({"status": "Pending"}), 200
+        threading.Thread(target=async_generate_trip_content, args=(trip_id,)).start()
+
+        return jsonify({
+            "message": "Trip regeneration requested successfully", 
+            "trip_id": trip_id
+        }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -227,8 +232,7 @@ def delete_trip(trip_id):
         return jsonify({
             'message': 'Trip deleted successfully',
             'trip_id': trip_id
-        })
-        
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -255,8 +259,7 @@ def update_trip_content(trip_id):
         return jsonify({
             'message': 'Trip content updated successfully',
             'trip_id': trip_id,
-            'status': 'Modified'
-        })
+        }), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -296,7 +299,7 @@ def update_trip(trip_id):
         return jsonify({
             'message': 'Trip updated successfully',
             'trip_id': trip_id
-        })
+        }), 200
         
     except ValueError as e:
         return jsonify({'error': f"Invalid data format: {str(e)}"}), 400

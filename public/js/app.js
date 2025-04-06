@@ -33,6 +33,234 @@ function parseDate(dateStr) {
   return date;
 }
 
+// Helper function to get Bootstrap icon class based on status
+function getStatusIconClass(status) {
+  switch (status) {
+    case "Completed":
+      return "bi bi-check-circle-fill text-success";
+    case "Pending":
+      return "bi bi-hourglass-split text-warning";
+    case "Failed":
+      return "bi bi-x-circle-fill text-danger";
+    case "Modified":
+      return "bi bi-exclamation-triangle-fill text-warning";
+    default:
+      return "bi bi-question-circle-fill text-secondary";
+  }
+}
+
+// Function to show Bootstrap alert
+function showAlert(message, type = "info") {
+  const alertContainer =
+    document.getElementById("alert-container") || createAlertContainer();
+
+  const alertDiv = document.createElement("div");
+  alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+  alertDiv.setAttribute("role", "alert");
+
+  alertDiv.textContent = message;
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "btn-close";
+  closeButton.setAttribute("data-bs-dismiss", "alert");
+  closeButton.setAttribute("aria-label", "Close");
+
+  alertDiv.appendChild(closeButton);
+  alertContainer.appendChild(alertDiv);
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(() => {
+    alertDiv.classList.remove("show");
+    setTimeout(() => alertDiv.remove(), 150);
+  }, 5000);
+}
+
+// Function to create alert container if it doesn't exist
+function createAlertContainer() {
+  const container = document.createElement("div");
+  container.id = "alert-container";
+  container.className = "position-fixed top-0 end-0 p-3";
+  container.style.zIndex = "1050";
+  document.body.appendChild(container);
+  return container;
+}
+
+// Function to populate form with trip data
+function populateFormWithTripData(trip) {
+  const form = document.getElementById("itineraryForm");
+  const tripTypeSelect = document.getElementById("trip_type");
+  const startDateInput = document.getElementById("start_date");
+  const endDateInput = document.getElementById("end_date");
+  const startPlaceInput = document.getElementById("start_place");
+  const endPlaceInput = document.getElementById("end_place");
+  const tripFocusInput = document.getElementById("trip_focus");
+  const tripNotesInput = document.getElementById("trip_notes");
+  const identifierInput = document.getElementById("identifier");
+
+  // Format dates for the inputs
+  const startDate = new Date(trip.start_date);
+  const endDate = new Date(trip.end_date);
+
+  // Set the form values
+  tripTypeSelect.value = trip.trip_type;
+  startDateInput.value = formatDate(startDate);
+  endDateInput.value = formatDate(endDate);
+  startPlaceInput.value = trip.start_place;
+  endPlaceInput.value = trip.end_place;
+  tripFocusInput.value = trip.trip_focus;
+  tripNotesInput.value = trip.trip_notes || "";
+  identifierInput.value = trip.identifier;
+
+  // Update Flatpickr instances if they exist
+  if (startDateInput._flatpickr) {
+    startDateInput._flatpickr.setDate(startDate);
+  }
+
+  if (endDateInput._flatpickr) {
+    endDateInput._flatpickr.setDate(endDate);
+  }
+
+  // Update format display
+  const startDateContainer = document.getElementById("start_date");
+  const endDateContainer = document.getElementById("end_date");
+
+  if (startDateContainer) {
+    startDateContainer.textContent = formatDate(startDate);
+  }
+
+  if (endDateContainer) {
+    endDateContainer.textContent = formatDate(endDate);
+  }
+
+  // Add a hidden input for the trip ID
+  let tripIdInput = document.getElementById("trip_id");
+  if (!tripIdInput) {
+    tripIdInput = document.createElement("input");
+    tripIdInput.type = "hidden";
+    tripIdInput.id = "trip_id";
+    tripIdInput.name = "trip_id";
+    form.appendChild(tripIdInput);
+  }
+  tripIdInput.value = trip.id;
+
+  // Change the submit button text
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.textContent = "Update Trip";
+}
+
+// Function to create content display elements
+function createContentDisplayElements(trip) {
+  const resultElement = document.getElementById("result");
+  resultElement.innerHTML = "";
+
+  // Create a header container
+  const headerContainer = document.createElement("div");
+  headerContainer.className =
+    "d-flex justify-content-between align-items-center alert alert-info mb-3";
+
+  // Add the view/edit mode text to the left side
+  const modeNote = document.createElement("div");
+  modeNote.innerHTML = '<i class="bi bi-eye"></i> Viewing mode';
+  headerContainer.appendChild(modeNote);
+
+  // Create buttons container for the right side
+  const buttonsContainer = document.createElement("div");
+  buttonsContainer.className = "d-flex gap-2";
+
+  // Add edit button
+  const editButton = document.createElement("button");
+  editButton.className = "btn btn-primary btn-sm";
+  editButton.innerHTML = '<i class="bi bi-pencil"></i> Edit Content';
+
+  // Add save button (initially hidden)
+  const saveButton = document.createElement("button");
+  saveButton.className = "btn btn-success btn-sm d-none";
+  saveButton.innerHTML = '<i class="bi bi-save"></i> Save Changes';
+
+  // Create a container for the content
+  const contentContainer = document.createElement("div");
+  contentContainer.className = "content-container";
+
+  // Check if the trip is still pending
+  if (trip.status === "Pending") {
+    // If pending, show a message and lock the content
+    contentContainer.innerHTML = `
+      <div class="alert alert-warning text-center p-5">
+        <i class="bi bi-hourglass-split fs-1"></i>
+        <h3 class="mt-3">Generation Pending</h3>
+        <p>This trip is still being generated. Please check back later.</p>
+        <div class="mt-3">
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span class="ms-2">Processing...</span>
+        </div>
+      </div>
+    `;
+
+    // Disable the edit button
+    editButton.disabled = true;
+    editButton.title = "Content is still being generated";
+
+    // Start polling for status updates
+    checkTripStatusWithPolling(trip.id);
+  } else {
+    // If not pending, show the content
+    contentContainer.innerHTML = trip.html_content;
+
+    // Add event listeners for editing
+    editButton.addEventListener("click", () => {
+      contentContainer.setAttribute("contenteditable", "true");
+      contentContainer.focus();
+      editButton.classList.add("d-none");
+      saveButton.classList.remove("d-none");
+      modeNote.innerHTML = '<i class="bi bi-pencil"></i> Editing mode';
+    });
+
+    saveButton.addEventListener("click", async () => {
+      await saveTripContent(trip.id, contentContainer.innerHTML);
+      contentContainer.setAttribute("contenteditable", "false");
+      saveButton.classList.add("d-none");
+      editButton.classList.remove("d-none");
+      modeNote.innerHTML = '<i class="bi bi-eye"></i> Viewing mode';
+    });
+  }
+
+  // Add buttons to the container
+  buttonsContainer.appendChild(editButton);
+  buttonsContainer.appendChild(saveButton);
+  headerContainer.appendChild(buttonsContainer);
+
+  // Add the header to the result element
+  resultElement.appendChild(headerContainer);
+
+  // Add the content container
+  resultElement.appendChild(contentContainer);
+
+  // Scroll to the form
+  document
+    .getElementById("itineraryForm")
+    .scrollIntoView({ behavior: "smooth" });
+}
+
+// Function to display trip content
+function displayTripContent(trip) {
+  const resultElement = document.getElementById("result");
+
+  // Clear previous content
+  resultElement.innerHTML = "";
+
+  // Create a container for the HTML content with full width
+  const contentContainer = document.createElement("div");
+  contentContainer.className = "trip-content w-100";
+  contentContainer.innerHTML = trip.html_content;
+
+  // Append the content to the result element
+  resultElement.appendChild(contentContainer);
+
+  // Scroll to the result element
+  resultElement.scrollIntoView({ behavior: "smooth" });
+}
+
 // Function to load trips
 async function loadTrips() {
   try {
@@ -160,59 +388,6 @@ async function loadTrips() {
   }
 }
 
-// Helper function to get Bootstrap icon class based on status
-function getStatusIconClass(status) {
-  switch (status) {
-    case "Completed":
-      return "bi bi-check-circle-fill text-success";
-    case "Pending":
-      return "bi bi-hourglass-split text-warning";
-    case "Failed":
-      return "bi bi-x-circle-fill text-danger";
-    case "Modified":
-      return "bi bi-exclamation-triangle-fill text-warning";
-    default:
-      return "bi bi-question-circle-fill text-secondary";
-  }
-}
-
-// Function to show Bootstrap alert
-function showAlert(message, type = "info") {
-  const alertContainer =
-    document.getElementById("alert-container") || createAlertContainer();
-
-  const alertDiv = document.createElement("div");
-  alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-  alertDiv.setAttribute("role", "alert");
-
-  alertDiv.textContent = message;
-
-  const closeButton = document.createElement("button");
-  closeButton.type = "button";
-  closeButton.className = "btn-close";
-  closeButton.setAttribute("data-bs-dismiss", "alert");
-  closeButton.setAttribute("aria-label", "Close");
-
-  alertDiv.appendChild(closeButton);
-  alertContainer.appendChild(alertDiv);
-
-  // Auto-dismiss after 5 seconds
-  setTimeout(() => {
-    alertDiv.classList.remove("show");
-    setTimeout(() => alertDiv.remove(), 150);
-  }, 5000);
-}
-
-// Function to create alert container if it doesn't exist
-function createAlertContainer() {
-  const container = document.createElement("div");
-  container.id = "alert-container";
-  container.className = "position-fixed top-0 end-0 p-3";
-  container.style.zIndex = "1050";
-  document.body.appendChild(container);
-  return container;
-}
-
 // Function to view a trip
 async function viewTrip(tripId) {
   try {
@@ -226,128 +401,10 @@ async function viewTrip(tripId) {
     }
 
     // Populate the form with trip details
-    const form = document.getElementById("itineraryForm");
-    const tripTypeSelect = document.getElementById("trip_type");
-    const startDateInput = document.getElementById("start_date");
-    const endDateInput = document.getElementById("end_date");
-    const startPlaceInput = document.getElementById("start_place");
-    const endPlaceInput = document.getElementById("end_place");
-    const tripFocusInput = document.getElementById("trip_focus");
-    const tripNotesInput = document.getElementById("trip_notes");
-    const identifierInput = document.getElementById("identifier");
+    populateFormWithTripData(trip);
 
-    // Format dates for the inputs
-    const startDate = new Date(trip.start_date);
-    const endDate = new Date(trip.end_date);
-
-    // Set the form values
-    tripTypeSelect.value = trip.trip_type;
-    startDateInput.value = formatDate(startDate);
-    endDateInput.value = formatDate(endDate);
-    startPlaceInput.value = trip.start_place;
-    endPlaceInput.value = trip.end_place;
-    tripFocusInput.value = trip.focus;
-    tripNotesInput.value = trip.additional_requirements || "";
-    identifierInput.value = trip.identifier;
-
-    // Update Flatpickr instances if they exist
-    if (startDateInput._flatpickr) {
-      startDateInput._flatpickr.setDate(startDate);
-    }
-
-    if (endDateInput._flatpickr) {
-      endDateInput._flatpickr.setDate(endDate);
-    }
-
-    // Update format display
-    const startDateContainer = document.getElementById("start_date");
-    const endDateContainer = document.getElementById("end_date");
-
-    if (startDateContainer) {
-      startDateContainer.textContent = fformatDate(startDate);
-    }
-
-    if (endDateContainer) {
-      endDateContainer.textContent = formatDate(endDate);
-    }
-
-    // Add a hidden input for the trip ID
-    let tripIdInput = document.getElementById("trip_id");
-    if (!tripIdInput) {
-      tripIdInput = document.createElement("input");
-      tripIdInput.type = "hidden";
-      tripIdInput.id = "trip_id";
-      tripIdInput.name = "trip_id";
-      form.appendChild(tripIdInput);
-    }
-    tripIdInput.value = tripId;
-
-    // Change the submit button text
-    const submitButton = form.querySelector('button[type="submit"]');
-    submitButton.textContent = "Update Trip";
-
-    const resultElement = document.getElementById("result");
-    resultElement.innerHTML = "";
-
-    // Create a header container
-    const headerContainer = document.createElement("div");
-    headerContainer.className =
-      "d-flex justify-content-between align-items-center alert alert-info mb-3";
-
-    // Add the view/edit mode text to the left side
-    const modeNote = document.createElement("div");
-    modeNote.innerHTML = '<i class="bi bi-eye"></i> Viewing mode';
-    headerContainer.appendChild(modeNote);
-
-    // Create buttons container for the right side
-    const buttonsContainer = document.createElement("div");
-    buttonsContainer.className = "d-flex gap-2";
-
-    // Add edit button
-    const editButton = document.createElement("button");
-    editButton.className = "btn btn-primary btn-sm";
-    editButton.innerHTML = '<i class="bi bi-pencil"></i> Edit Content';
-
-    // Add save button (initially hidden)
-    const saveButton = document.createElement("button");
-    saveButton.className = "btn btn-success btn-sm d-none";
-    saveButton.innerHTML = '<i class="bi bi-save"></i> Save Changes';
-
-    // Create a container for the content
-    const contentContainer = document.createElement("div");
-    contentContainer.className = "content-container";
-    contentContainer.innerHTML = trip.html_content;
-
-    // Add event listeners
-    editButton.addEventListener("click", () => {
-      contentContainer.setAttribute("contenteditable", "true");
-      contentContainer.focus();
-      editButton.classList.add("d-none");
-      saveButton.classList.remove("d-none");
-      modeNote.innerHTML = '<i class="bi bi-pencil"></i> Editing mode';
-    });
-
-    saveButton.addEventListener("click", async () => {
-      await saveTripContent(tripId, contentContainer.innerHTML);
-      contentContainer.setAttribute("contenteditable", "false");
-      saveButton.classList.add("d-none");
-      editButton.classList.remove("d-none");
-      modeNote.innerHTML = '<i class="bi bi-eye"></i> Viewing mode';
-    });
-
-    // Add buttons to the container
-    buttonsContainer.appendChild(editButton);
-    buttonsContainer.appendChild(saveButton);
-    headerContainer.appendChild(buttonsContainer);
-
-    // Add the header to the result element
-    resultElement.appendChild(headerContainer);
-
-    // Add the content container
-    resultElement.appendChild(contentContainer);
-
-    // Scroll to the form
-    form.scrollIntoView({ behavior: "smooth" });
+    // Create content display elements
+    createContentDisplayElements(trip);
 
     // Show a message that we're in view/edit mode
     showAlert(
@@ -422,9 +479,7 @@ async function checkTripStatusWithPolling(tripId) {
       const elapsedSeconds = Math.floor(
         (Date.now() - window.pollingTimes[tripId]) / 1000
       );
-      const pollingTimeElement = document.querySelector(
-        `tr[data-trip-id="${tripId}"] .polling-time`
-      );
+      const pollingTimeElement = statusCell.querySelector(".polling-time");
       if (pollingTimeElement) {
         pollingTimeElement.textContent = `(${elapsedSeconds}s)`;
       }
@@ -456,10 +511,11 @@ async function checkTripStatusWithPolling(tripId) {
             const elapsedSeconds = Math.floor(
               (Date.now() - window.pollingTimes[tripId]) / 1000
             );
-            const pollingTimeSpan = document.createElement("span");
-            pollingTimeSpan.className = "polling-time ms-1";
-            pollingTimeSpan.textContent = `(${elapsedSeconds}s)`;
-            statusCell.appendChild(pollingTimeSpan);
+            // Check if polling time element already exists
+            let pollingTimeSpan = statusCell.querySelector(".polling-time");
+            if (pollingTimeSpan) {
+              pollingTimeSpan.textContent = `(${elapsedSeconds}s)`;
+            }
           }
         }
 
@@ -468,22 +524,8 @@ async function checkTripStatusWithPolling(tripId) {
           clearInterval(pollInterval);
           clearInterval(timeUpdateInterval);
 
-          // Display the HTML content directly in the result element
-          const resultElement = document.getElementById("result");
-
-          // Clear previous content
-          resultElement.innerHTML = "";
-
-          // Create a container for the HTML content with full width
-          const contentContainer = document.createElement("div");
-          contentContainer.className = "trip-content w-100";
-          contentContainer.innerHTML = trip.html_content;
-
-          // Append the content to the result element
-          resultElement.appendChild(contentContainer);
-
-          // Scroll to the result element
-          resultElement.scrollIntoView({ behavior: "smooth" });
+          // Display the HTML content
+          displayTripContent(trip);
 
           // Refresh the trips list to update the status
           await loadTrips();
@@ -523,69 +565,13 @@ async function editTrip(tripId) {
       return;
     }
 
-    // Get the form elements
-    const form = document.getElementById("itineraryForm");
-    const tripTypeSelect = document.getElementById("trip_type");
-    const startDateInput = document.getElementById("start_date");
-    const endDateInput = document.getElementById("end_date");
-    const startPlaceInput = document.getElementById("start_place");
-    const endPlaceInput = document.getElementById("end_place");
-    const tripFocusInput = document.getElementById("trip_focus");
-    const tripNotesInput = document.getElementById("trip_notes");
-    const identifierInput = document.getElementById("identifier");
-
-    // Format dates for the inputs
-    const startDate = new Date(trip.start_date);
-    const endDate = new Date(trip.end_date);
-
-    // Set the form values
-    tripTypeSelect.value = trip.trip_type;
-    startDateInput.value = formatDate(startDate);
-    endDateInput.value = formatDate(endDate);
-    startPlaceInput.value = trip.start_place;
-    endPlaceInput.value = trip.end_place;
-    tripFocusInput.value = trip.focus;
-    tripNotesInput.value = trip.additional_requirements || "";
-    identifierInput.value = trip.identifier;
-
-    // Update Flatpickr instances if they exist
-    if (startDateInput._flatpickr) {
-      startDateInput._flatpickr.setDate(startDate);
-    }
-
-    if (endDateInput._flatpickr) {
-      endDateInput._flatpickr.setDate(endDate);
-    }
-
-    // Update format display
-    const startDateContainer = document.getElementById("start_date");
-    const endDateContainer = document.getElementById("end_date");
-
-    if (startDateContainer) {
-      startDateContainer.textContent = formatDate(startDate);
-    }
-
-    if (endDateContainer) {
-      endDateContainer.textContent = formatDate(endDate);
-    }
-
-    // Add a hidden input for the trip ID
-    let tripIdInput = document.getElementById("trip_id");
-    if (!tripIdInput) {
-      tripIdInput = document.createElement("input");
-      tripIdInput.type = "hidden";
-      tripIdInput.id = "trip_id";
-      tripIdInput.name = "trip_id";
-      form.appendChild(tripIdInput);
-    }
-    tripIdInput.value = tripId;
-
-    // Change the submit button text
-    const submitButton = form.querySelector('button[type="submit"]');
-    submitButton.textContent = "Update Trip";
+    // Populate the form with trip details
+    populateFormWithTripData(trip);
 
     // Scroll to the form
-    form.scrollIntoView({ behavior: "smooth" });
+    document
+      .getElementById("itineraryForm")
+      .scrollIntoView({ behavior: "smooth" });
 
     // Show a message that we're in edit mode
     showAlert(
