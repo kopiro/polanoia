@@ -252,13 +252,27 @@ function displayTripContent(trip) {
   // Create a container for the HTML content with full width
   const contentContainer = document.createElement("div");
   contentContainer.className = "trip-content w-100";
-  contentContainer.innerHTML = trip.html_content;
+
+  // Check if the trip has HTML content
+  if (trip.html_content) {
+    contentContainer.innerHTML = trip.html_content;
+  } else {
+    // If no HTML content, show a message
+    contentContainer.innerHTML = `
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle-fill"></i> No content available for this trip.
+      </div>
+    `;
+  }
 
   // Append the content to the result element
   resultElement.appendChild(contentContainer);
 
   // Scroll to the result element
   resultElement.scrollIntoView({ behavior: "smooth" });
+
+  // Return the content container for potential further manipulation
+  return contentContainer;
 }
 
 // Function to load trips
@@ -453,37 +467,32 @@ async function checkTripStatusWithPolling(tripId) {
       `tr[data-trip-id="${tripId}"] td:first-child`
     );
     if (statusCell) {
-      statusCell.innerHTML = `
-        <i class="bi bi-hourglass-split text-warning">
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-        </i>
-        <span class="polling-time ms-1">(0s)</span>
-      `;
+      // Create hourglass icon
+      const hourglassIcon = document.createElement("i");
+      hourglassIcon.className = "bi bi-hourglass-split text-warning";
+
+      // Create spinner span
+      const spinnerSpan = document.createElement("span");
+      spinnerSpan.className = "spinner-border spinner-border-sm";
+      spinnerSpan.setAttribute("role", "status");
+      spinnerSpan.setAttribute("aria-hidden", "true");
+      hourglassIcon.appendChild(spinnerSpan);
+
+      // Create polling time span
+      const pollingTimeSpan = document.createElement("span");
+      pollingTimeSpan.className = "polling-time ms-1";
+      pollingTimeSpan.textContent = "(0s)";
+
+      // Clear and append new elements
+      statusCell.innerHTML = "";
+      statusCell.appendChild(hourglassIcon);
+      statusCell.appendChild(pollingTimeSpan);
     }
 
     // Initialize polling intervals if it doesn't exist
     if (!window.pollingIntervals) {
       window.pollingIntervals = {};
     }
-
-    // Initialize polling times if it doesn't exist
-    if (!window.pollingTimes) {
-      window.pollingTimes = {};
-    }
-
-    // Set the start time for this polling session
-    window.pollingTimes[tripId] = Date.now();
-
-    // Update the polling time display every second
-    const timeUpdateInterval = setInterval(() => {
-      const elapsedSeconds = Math.floor(
-        (Date.now() - window.pollingTimes[tripId]) / 1000
-      );
-      const pollingTimeElement = statusCell.querySelector(".polling-time");
-      if (pollingTimeElement) {
-        pollingTimeElement.textContent = `(${elapsedSeconds}s)`;
-      }
-    }, 1000);
 
     // Start polling
     const pollInterval = setInterval(async () => {
@@ -493,23 +502,15 @@ async function checkTripStatusWithPolling(tripId) {
 
         if (trip.error) {
           clearInterval(pollInterval);
-          clearInterval(timeUpdateInterval);
           showAlert(trip.error, "danger");
           return;
         }
 
-        // Update status in the table
-        if (statusCell) {
-          const statusIcon = document.createElement("i");
-          statusIcon.className = getStatusIconClass(trip.status);
-          statusIcon.setAttribute("title", trip.status || "Pending");
-          statusCell.innerHTML = "";
-          statusCell.appendChild(statusIcon);
-
-          // Add the polling time if still polling
-          if (trip.status === "Pending") {
+        // Add the polling time if still polling
+        if (trip.status === "Pending") {
+          if (statusCell) {
             const elapsedSeconds = Math.floor(
-              (Date.now() - window.pollingTimes[tripId]) / 1000
+              (Date.now() - window.pollingIntervals[tripId].at) / 1000
             );
             // Check if polling time element already exists
             let pollingTimeSpan = statusCell.querySelector(".polling-time");
@@ -522,7 +523,6 @@ async function checkTripStatusWithPolling(tripId) {
         if (trip.status === "Completed") {
           // Trip is ready, stop polling and show the content
           clearInterval(pollInterval);
-          clearInterval(timeUpdateInterval);
 
           // Display the HTML content
           displayTripContent(trip);
@@ -532,7 +532,6 @@ async function checkTripStatusWithPolling(tripId) {
         } else if (trip.status === "Failed") {
           // Trip generation failed, stop polling
           clearInterval(pollInterval);
-          clearInterval(timeUpdateInterval);
 
           showAlert("Trip generation failed. Please try again.", "danger");
           await loadTrips(); // Refresh the trips list
@@ -540,13 +539,15 @@ async function checkTripStatusWithPolling(tripId) {
       } catch (error) {
         console.error("Error checking trip status:", error);
         clearInterval(pollInterval);
-        clearInterval(timeUpdateInterval);
         showAlert("Failed to check trip status. Please try again.", "danger");
       }
     }, 1000); // Poll every 1 seconds
 
     // Store the interval ID
-    window.pollingIntervals[tripId] = pollInterval;
+    window.pollingIntervals[tripId] = {
+      intv: pollInterval,
+      at: Date.now(),
+    };
   } catch (error) {
     console.error("Error setting up polling:", error);
     showAlert("Failed to set up status checking. Please try again.", "danger");

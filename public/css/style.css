@@ -135,13 +135,20 @@ body {
   border-color: #004494;
 }
 
-#result img {
-  margin-bottom: 10px;
-  max-width: 50%;
-}
-
 #result h2 {
   margin-top: 1em;
+}
+
+#result h1,
+#result h2 {
+  font-weight: 900;
+}
+
+#result img {
+  margin-bottom: 1.5em;
+  max-width: calc(min(100%, 500px));
+  border: 12px solid white;
+  outline: 1px solid #ddd;
 }
 
 /* Add button styling */
@@ -231,6 +238,11 @@ body {
   padding: 1rem 0;
   margin-bottom: 1rem;
   min-height: 200px;
+  border: 1px solid #ddd;
+  padding: 2em 2em 1em 2em;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 1.35em;
 }
 
 .content-container[contenteditable="true"] {
