@@ -147,6 +147,7 @@ body {
 #result img {
   margin-bottom: 1.5em;
   max-height: 400px;
+  max-width: 100%;
   border: 12px solid white;
   outline: 1px solid #ddd;
 }
