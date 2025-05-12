@@ -402,6 +402,47 @@ async function loadTrips() {
   }
 }
 
+// Function to check URL for trip ID and load the trip if found
+function checkUrlForTripId() {
+  // Get the current URL
+  const url = new URL(window.location.href);
+
+  // Check if there's a trip_id parameter in the URL
+  const tripId = url.searchParams.get("trip_id");
+
+  if (tripId) {
+    // If a trip ID is found in the URL, load that trip
+    viewTrip(tripId);
+    return true;
+  }
+
+  return false;
+}
+
+// Function to update URL with trip ID
+function updateUrlWithTripId(tripId) {
+  // Create a new URL object with the current URL
+  const url = new URL(window.location.href);
+
+  // Set the trip_id parameter
+  url.searchParams.set("trip_id", tripId);
+
+  // Update the URL without reloading the page
+  window.history.pushState({}, "", url);
+}
+
+// Function to clear trip ID from URL
+function clearTripIdFromUrl() {
+  // Create a new URL object with the current URL
+  const url = new URL(window.location.href);
+
+  // Remove the trip_id parameter
+  url.searchParams.delete("trip_id");
+
+  // Update the URL without reloading the page
+  window.history.pushState({}, "", url);
+}
+
 // Function to view a trip
 async function viewTrip(tripId) {
   try {
@@ -413,6 +454,9 @@ async function viewTrip(tripId) {
       showAlert(trip.error, "danger");
       return;
     }
+
+    // Update URL with trip ID
+    updateUrlWithTripId(tripId);
 
     // Populate the form with trip details
     populateFormWithTripData(trip);
@@ -592,65 +636,71 @@ async function editTrip(tripId) {
 document.addEventListener("DOMContentLoaded", () => {
   loadTrips();
 
-  // Initialize Flatpickr date pickers with format
-  const datePickers = document.querySelectorAll(".datepicker");
-  if (datePickers.length > 0) {
-    datePickers.forEach((picker) => {
-      flatpickr(picker, {
-        enableTime: true,
-        dateFormat: "d/m/Y H:i",
-        time_24hr: true,
-        locale: {
-          firstDayOfWeek: 1, // Monday
-          formatDate: (date, format, locale) => {
-            // Ensure the date is formatted correctly for the backend
-            const day = String(date.getDate()).padStart(2, "0");
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const year = date.getFullYear();
-            const hours = String(date.getHours()).padStart(2, "0");
-            const minutes = String(date.getMinutes()).padStart(2, "0");
+  // Check if there's a trip ID in the URL
+  const tripIdInUrl = checkUrlForTripId();
 
-            return `${day}/${month}/${year} ${hours}:${minutes}`;
+  // If no trip ID in URL, initialize the form
+  if (!tripIdInUrl) {
+    // Initialize Flatpickr date pickers with format
+    const datePickers = document.querySelectorAll(".datepicker");
+    if (datePickers.length > 0) {
+      datePickers.forEach((picker) => {
+        flatpickr(picker, {
+          enableTime: true,
+          dateFormat: "d/m/Y H:i",
+          time_24hr: true,
+          locale: {
+            firstDayOfWeek: 1, // Monday
+            formatDate: (date, format, locale) => {
+              // Ensure the date is formatted correctly for the backend
+              const day = String(date.getDate()).padStart(2, "0");
+              const month = String(date.getMonth() + 1).padStart(2, "0");
+              const year = date.getFullYear();
+              const hours = String(date.getHours()).padStart(2, "0");
+              const minutes = String(date.getMinutes()).padStart(2, "0");
+
+              return `${day}/${month}/${year} ${hours}:${minutes}`;
+            },
           },
-        },
+        });
       });
-    });
-  }
+    }
 
-  // Add event listeners to date inputs to show format
-  const startDateInput = document.getElementById("start_date");
-  const endDateInput = document.getElementById("end_date");
+    // Add event listeners to date inputs to show format
+    const startDateInput = document.getElementById("start_date");
+    const endDateInput = document.getElementById("end_date");
 
-  if (startDateInput && endDateInput) {
-    // Create containers for displaying format dates
-    const startDateContainer = document.createElement("div");
-    startDateContainer.className = "form-text mt-1";
-    startDateContainer.id = "start_date";
-    startDateInput.parentNode.appendChild(startDateContainer);
+    if (startDateInput && endDateInput) {
+      // Create containers for displaying format dates
+      const startDateContainer = document.createElement("div");
+      startDateContainer.className = "form-text mt-1";
+      startDateContainer.id = "start_date";
+      startDateInput.parentNode.appendChild(startDateContainer);
 
-    const endDateContainer = document.createElement("div");
-    endDateContainer.className = "form-text mt-1";
-    endDateContainer.id = "end_date";
-    endDateInput.parentNode.appendChild(endDateContainer);
+      const endDateContainer = document.createElement("div");
+      endDateContainer.className = "form-text mt-1";
+      endDateContainer.id = "end_date";
+      endDateInput.parentNode.appendChild(endDateContainer);
 
-    // Update format display when date inputs change
-    startDateInput.addEventListener("change", () => {
-      if (startDateInput.value) {
-        const date = new Date(startDateInput.value);
-        startDateContainer.textContent = formatDate(date);
-      } else {
-        startDateContainer.textContent = "";
-      }
-    });
+      // Update format display when date inputs change
+      startDateInput.addEventListener("change", () => {
+        if (startDateInput.value) {
+          const date = new Date(startDateInput.value);
+          startDateContainer.textContent = formatDate(date);
+        } else {
+          startDateContainer.textContent = "";
+        }
+      });
 
-    endDateInput.addEventListener("change", () => {
-      if (endDateInput.value) {
-        const date = new Date(endDateInput.value);
-        endDateContainer.textContent = formatDate(date);
-      } else {
-        endDateContainer.textContent = "";
-      }
-    });
+      endDateInput.addEventListener("change", () => {
+        if (endDateInput.value) {
+          const date = new Date(endDateInput.value);
+          endDateContainer.textContent = formatDate(date);
+        } else {
+          endDateContainer.textContent = "";
+        }
+      });
+    }
   }
 });
 
@@ -724,6 +774,9 @@ document
             tripIdInput.remove();
           }
 
+          // Clear trip ID from URL
+          clearTripIdFromUrl();
+
           // Refresh the trips list
           await loadTrips();
 
@@ -754,6 +807,9 @@ document
           messageContainer.textContent =
             "Your trip is being generated. You can view its status in the Past Trips section below.";
           result.appendChild(messageContainer);
+
+          // Update URL with new trip ID
+          updateUrlWithTripId(resultData.trip_id);
 
           // Refresh the trips list to show the new trip
           await loadTrips();
@@ -796,6 +852,9 @@ async function deleteTrip(tripId) {
 
     // Show success message
     showAlert("Trip deleted successfully", "success");
+
+    // Clear trip ID from URL if the deleted trip was being viewed
+    clearTripIdFromUrl();
 
     // Refresh the trips list
     await loadTrips();
